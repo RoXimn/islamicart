@@ -1,5 +1,7 @@
-from typing import Sequence
+from typing import Callable, Sequence
 from manim import *
+from manim.typing import Point3DLike
+from manim import SVGNAMES
 from numpy.typing import NDArray
 
 config.frame_width = 9
@@ -13,35 +15,40 @@ def createInstruction(txt: str, continued: bool = False):
     global instructionCount
 
     if continued:
-        instruction = Text(txt, font='Arial', font_size=24).to_corner(DOWN)
+        instruction = Text(txt, font='Arial', font_size=24, color=SVGNAMES.BROWN)
     else:
         instructionCount += 1
-        instruction = Text(f'{instructionCount}. {txt}', font='Corbel', font_size=24).to_corner(DOWN)
+        instruction = Text(f'{instructionCount}. {txt}', font='Corbel', font_size=24, color=SVGNAMES.BROWN)
     return instruction
 
 
-def XY(point) -> NDArray:
+def XY(point: NDArray[np.float64]) -> NDArray[np.float64]:
     """Get X, Y coordinates of the point discarding the Z coordinate"""
     return np.array([point[0], point[1], 0])
 
 
-def intersections(points: Sequence, interval: int, sides: int):
+def intersections(points: Sequence[NDArray[np.float64]], interval: int, sides: int) -> list[NDArray[np.float64]]:
     """Get intersections of the lines joining the list of points on a circle at given inteval"""
-    CAP = lambda x: x % len(points)
-    pp = []
+    CAP: Callable[[int], int] = lambda x: x % len(points)
+    pp: list[NDArray[np.float64]] = []
     for i in range(sides):
-        a1, a2, b1, b2 = points[CAP(i)], points[CAP(i + interval)], points[CAP(i + 1)], points[CAP(i + 1 - interval)]
+        a1 = points[CAP(i)]
+        a2 = points[CAP(i + interval)]
+        b1 = points[CAP(i + 1)]
+        b2 = points[CAP(i + 1 - interval)]
         intersection = line_intersection([XY(a1), XY(a2)], [XY(b1), XY(b2)])
         pp.append(intersection)
     return pp
 
 
-def dashed(mobject: VMobject, factor=1.0):
-    return DashedVMobject(mobject, num_dashes=int(64 * factor), dashed_ratio=0.75)
+def dashed(mobject: VMobject, factor: float=1.0):
+    return DashedVMobject(mobject, num_dashes=int(64 * factor), dashed_ratio=0.6)
 
 
 class SixPointStar(Scene):
-    def createCircle(self, center, radius, color=WHITE, dotColor=RED):
+    def createCircle(self, center: Point3DLike | Mobject,
+                     radius: float, color: ParsableManimColor=WHITE,
+                     dotColor: ParsableManimColor=RED):
         dot = Dot(color=dotColor).move_to(center)
         circle = Circle(radius=radius, color=color).move_to(center)
 
@@ -49,39 +56,57 @@ class SixPointStar(Scene):
         return circle
 
     def construct(self):
-        RADIUS = 2.0
+        background = ImageMobject("assets/paper-texture-02.jpg")
+        background.scale_to_fit_height(self.camera.frame_height)
+        background.set_z_index(-100)
+        self.add(background)
 
-        plane = NumberPlane(x_range=(-4, +4), y_range=(-4, +4)).set_opacity(0.25)
-        baseline = Line([-3, 0, 0], [+3, 0, 0], color=YELLOW)
+        RADIUS: float = 3.0
+        GridColor: ParsableManimColor = SVGNAMES.DIMGRAY
+        ConstructionLineColor: ParsableManimColor = SVGNAMES.DARKGREEN
+        ReferenceDotColor: ParsableManimColor = SVGNAMES.CRIMSON
+        LabelSize: float = 24.0
+        LabelFillColor: ParsableManimColor = SVGNAMES.CORNSILK
+        FinalColor: ParsableManimColor = SVGNAMES.ROYALBLUE
+        
 
-        centralDot = Dot(color=RED).move_to([0, 0, 0])
-        centralCircle = Circle(radius=RADIUS, color=YELLOW).move_to([0, 0, 0])
+        plane = NumberPlane(
+            x_range=(-4, +4), y_range=(-4, +4),
+            axis_config={'stroke_color': GridColor},
+            background_line_style={
+                "stroke_color": GridColor,
+                "stroke_opacity": 0.25
+            })
+        baseline = dashed(Line(np.array([-4, 0, 0]), np.array([+4, 0, 0]), color=ConstructionLineColor))
 
-        dotA = Dot(color=RED).move_to([-RADIUS, 0, 0])
-        arcA = Arc(radius=RADIUS, start_angle=PI * 3 / 2, angle=PI, arc_center=[-RADIUS, 0, 0], color=YELLOW)
-        dotB = Dot(color=RED).move_to([+RADIUS, 0, 0])
-        arcB = Arc(radius=RADIUS, start_angle=PI * 1 / 2, angle=PI, arc_center=[+RADIUS, 0, 0], color=YELLOW)
+        centralDot = Dot(color=ReferenceDotColor).move_to(np.array([0, 0, 0]))
+        centralCircle = Circle(radius=RADIUS, color=ConstructionLineColor).move_to(np.array([0, 0, 0]))
 
-        sixPoints = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES]) for n in range(0, 360, 60)]
-        sixDots = VGroup(*[Dot(p, color=RED) for p in sixPoints])
-        sixLabels = VGroup(*[LabeledDot(label=Text(str(i + 1), color=RED, font_size=16), point=p, fill_color=WHITE)
+        dotA = Dot(color=ReferenceDotColor).move_to(np.array([-RADIUS, 0, 0]))
+        arcA = dashed(Arc(radius=RADIUS, start_angle=PI * 3 / 2, angle=PI, arc_center=np.array([-RADIUS, 0, 0]), color=ConstructionLineColor))
+        dotB = Dot(color=ReferenceDotColor).move_to(np.array([+RADIUS, 0, 0]))
+        arcB = dashed(Arc(radius=RADIUS, start_angle=PI * 1 / 2, angle=PI, arc_center=np.array([+RADIUS, 0, 0]), color=ConstructionLineColor))
+
+        sixPoints: list[NDArray[np.float64]] = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES]) for n in range(0, 360, 60)]
+        sixDots = VGroup(*[Dot(p, color=ReferenceDotColor) for p in sixPoints])
+        sixLabels = VGroup(*[LabeledDot(label=Text(str(i + 1), color=ReferenceDotColor, font_size=LabelSize), point=p, fill_color=LabelFillColor)
                              for i, p in enumerate(spherical_to_cartesian([RADIUS + 0.5, n * DEGREES, 90 * DEGREES])
                                                    for n in range(0, 360, 60))])
 
         triPoints = sixPoints[:]
         triPoints.append(sixPoints[0])
-        tri1 = Polygon(*triPoints[0::2], color=YELLOW)
-        tri2 = Polygon(*triPoints[1::2], color=YELLOW)
+        tri1 = dashed(Polygon(*triPoints[0::2], color=ConstructionLineColor))
+        tri2 = dashed(Polygon(*triPoints[1::2], color=ConstructionLineColor))
 
-        interPoints = intersections(sixPoints, interval=2, sides=6)
-        sixPointStarVertices = []
+        interPoints: list[NDArray[np.float64]] = intersections(sixPoints, interval=2, sides=6)
+        sixPointStarVertices: list[NDArray[np.float64]] = []
         for a, b in zip(sixPoints, interPoints):
             sixPointStarVertices.extend([a, b])
-        sixPointVertexDots = [Dot(p, color=BLUE) for p in sixPointStarVertices]
-        sixPointStar = Polygon(*sixPointStarVertices, color=BLUE, fill_opacity=1)
+        sixPointVertexDots = [Dot(p, radius=DEFAULT_DOT_RADIUS*0.75, color=FinalColor) for p in sixPointStarVertices]
+        sixPointStar = Polygon(*sixPointStarVertices, color=FinalColor, fill_opacity=1)
 
-        title = Text('Six-Point Star', color=BLUE).next_to(sixPointStar, DOWN)
-        howto = Text('how to draw a', color=BLUE, slant='ITALIC').next_to(sixPointStar, UP)
+        title = Text('Six-Point Star', color=FinalColor).next_to(sixPointStar, DOWN)
+        howto = Text('how to draw a', color=FinalColor, slant='ITALIC').next_to(sixPointStar, UP)
         self.add(title, howto, sixPointStar)
         self.wait(2)
 
@@ -90,12 +115,12 @@ class SixPointStar(Scene):
 
         # Step 1
         # ins1 = createInstruction('Draw a straight line')
-        # self.play(FadeIn(ins1, shift=UP), Create(baseline))
+        # self.play(FadeIn(ins1, shift=UP))
         self.play(Create(baseline))
 
         # Step 2
-        ins2 = createInstruction('Draw a circle on the line')
-        # self.play(Transform(ins1, ins2), FadeIn(centralDot))
+        # ins2 = createInstruction('Draw a circle on the line')
+        # self.play(Transform(ins1, ins2))
         self.play(FadeIn(centralDot))
         self.play(Create(centralCircle))
         self.wait(1)
@@ -104,7 +129,7 @@ class SixPointStar(Scene):
         # ins3A = createInstruction('From the intersection of the line and circle, draw arcs cutting the circle.')
         # self.play(Transform(ins1, ins3A), FadeIn(dotA), FadeIn(dotB))
         self.play(FadeIn(dotA), FadeIn(dotB))
-        self.play(Flash(dotA), Flash(dotB))
+        self.play(Flash(dotA, color=ReferenceDotColor), Flash(dotB, color=ReferenceDotColor))
         self.play(Create(arcA), Create(arcB))
         self.wait(1)
 
@@ -113,8 +138,9 @@ class SixPointStar(Scene):
         # ins3B = createInstruction('this creates six points on the circle', continued=True)
         # self.play(baseline.animate.fade(0.5), Transform(ins1, ins3B))
         self.play(baseline.animate.fade(0.75), centralDot.animate.fade(0.75),
-                  FadeIn(sixDots), FadeIn(sixLabels))
-        self.play(*[Flash(d) for d in sixDots])
+                  FadeIn(sixDots), FadeIn(sixLabels),
+                  FadeOut(dotA), FadeOut(dotB))
+        self.play(*[Flash(d, color=ReferenceDotColor) for d in sixDots])
         self.wait(1)
 
         # Step 4
@@ -130,15 +156,15 @@ class SixPointStar(Scene):
         # ins5 = createInstruction('Draw along the outline of the two triangles to create the 6-point star')
         # self.play(tri1.animate.fade(0.5), tri2.animate.fade(0.5), FadeOut(sixLabels), Transform(ins1, ins5))
         self.play(tri1.animate.fade(0.75), tri2.animate.fade(0.75),
-                  FadeOut(sixLabels),
+                  FadeOut(sixLabels), FadeOut(sixDots),
                   *[FadeIn(d, scale=1.5) for d in sixPointVertexDots], run_time=1)
-        sixPointStar.set_fill(BLUE, opacity=0)
+        sixPointStar.set_fill(FinalColor, opacity=0)
         self.play(Create(sixPointStar), run_time=5)
-        self.play(*[FadeOut(d) for d in sixPointVertexDots], FadeOut(sixDots),
-                  FadeOut(arcA), FadeOut(arcB), FadeOut(dotA), FadeOut(dotB),
+        self.play(*[FadeOut(d) for d in sixPointVertexDots],
+                  FadeOut(arcA), FadeOut(arcB),
                   FadeOut(tri1), FadeOut(tri2),
                   FadeOut(baseline), FadeOut(centralCircle), FadeOut(centralDot), FadeOut(plane),
-                  FadeIn(title), sixPointStar.animate.set_fill(BLUE, opacity=1), run_time=2)
+                  FadeIn(title), sixPointStar.animate.set_fill(FinalColor, opacity=1), run_time=2)
 
         # ins6 = createInstruction('Six-Point Rosette', continued=True)
         # self.play(FadeOut(ins1), FadeIn(ins6, scale=1.5), run_time=2)
