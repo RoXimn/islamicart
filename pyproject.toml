@@ -1,0 +1,10 @@
+[project]
+name = "islamicart"
+version = "0.1.0"
+description = "Geometric Islamic Art HowTo"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "manim>=0.19.0",
+    "numpy>=2.3.3",
+]
