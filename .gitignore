@@ -245,4 +245,5 @@ media/
 *.m4v
 *.webm
 *.mp3
-
+*.blend
+*.blend1
