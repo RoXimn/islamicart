@@ -1,34 +1,69 @@
+# ******************************************************************************
+# Copyright (c) 2025. All rights reserved.
+#
+# This work is licensed under the Creative Commons Attribution 4.0
+# International License. To view a copy of this license,
+# visit # http://creativecommons.org/licenses/by/4.0/.
+# Author: roximn <roximn@rixir.org>
+# ******************************************************************************
 from typing import Callable, Sequence
+
+import numpy as np
 from manim import *
 from manim.typing import Point3DLike
 from manim import SVGNAMES
 from numpy.typing import NDArray
 
+# ******************************************************************************
 config.frame_width = 9
 config.frame_height = 16
 config.frame_size = (1080, 1920)
 
-instructionCount = 0
+# ******************************************************************************
+def TexWrappedText(txt: str,
+                   fontSize: str = "normalsize",
+                   italic: bool = True,
+                   bold: bool = False,
+                   center: bool = True,
+                   color: ParsableManimColor = BLACK):
+    assert fontSize in ('tiny', 'small', 'normalsize', 'large', 'Large', 'LARGE', 'huge', 'Huge')
+    texText = txt
+    if bold:
+        texText = f"\\textbf{{{texText}}}"
+    if italic:
+        texText = f"\\textit{{{texText}}}"
+    if center:
+        texText = r"\centering" + texText
+    texText = fr"\{fontSize} {texText}"
+    return Tex(r"\parbox{5cm}{" f"{texText}" r"}",
+               tex_template=TexFontTemplates.palatino, color=color)
 
-
+# ******************************************************************************
 def createInstruction(txt: str, continued: bool = False):
-    global instructionCount
+    if hasattr(createInstruction, "instructionCount"):
+        n = createInstruction.instructionCount
+    else:
+        createInstruction.instructionCount = 0
 
     if continued:
-        instruction = Text(txt, font='Arial', font_size=24, color=SVGNAMES.BROWN)
+        instruction = TexWrappedText(txt, color=SVGNAMES.BROWN)
     else:
-        instructionCount += 1
-        instruction = Text(f'{instructionCount}. {txt}', font='Corbel', font_size=24, color=SVGNAMES.BROWN)
+        createInstruction.instructionCount += 1
+        instruction = TexWrappedText(
+            f"{createInstruction.instructionCount}. {txt}",
+            color=SVGNAMES.BROWN
+        )
     return instruction
 
-
+# ******************************************************************************
 def XY(point: NDArray[np.float64]) -> NDArray[np.float64]:
     """Get X, Y coordinates of the point discarding the Z coordinate"""
     return np.array([point[0], point[1], 0])
 
-
-def intersections(points: Sequence[NDArray[np.float64]], interval: int, sides: int) -> list[NDArray[np.float64]]:
-    """Get intersections of the lines joining the list of points on a circle at given inteval"""
+# ******************************************************************************
+def intersections(points: Sequence[NDArray[np.float64]],
+                  interval: int, sides: int) -> list[NDArray[np.float64]]:
+    """Get intersections of the lines joining the list of points on a circle at given interval"""
     CAP: Callable[[int], int] = lambda x: x % len(points)
     pp: list[NDArray[np.float64]] = []
     for i in range(sides):
@@ -40,11 +75,11 @@ def intersections(points: Sequence[NDArray[np.float64]], interval: int, sides: i
         pp.append(intersection)
     return pp
 
-
+# ******************************************************************************
 def dashed(mobject: VMobject, factor: float=1.0):
     return DashedVMobject(mobject, num_dashes=int(64 * factor), dashed_ratio=0.6)
 
-
+# ==============================================================================
 class SixPointStar(Scene):
     def createCircle(self, center: Point3DLike | Mobject,
                      radius: float, color: ParsableManimColor=WHITE,
@@ -56,18 +91,21 @@ class SixPointStar(Scene):
         return circle
 
     def construct(self):
+        # **********************************************************************
+        # Construction
+
         background = ImageMobject("assets/paper-texture-02.jpg")
         background.scale_to_fit_height(self.camera.frame_height)
         background.set_z_index(-100)
         self.add(background)
 
         RADIUS: float = 3.0
-        GridColor: ParsableManimColor = SVGNAMES.DIMGRAY
-        ConstructionLineColor: ParsableManimColor = SVGNAMES.DARKGREEN
-        ReferenceDotColor: ParsableManimColor = SVGNAMES.CRIMSON
+        GridColor: ParsableManimColor = "#003049"
+        ConstructionLineColor: ParsableManimColor = "#FF9911"
+        ReferenceDotColor: ParsableManimColor = "#D62828"
         LabelSize: float = 24.0
-        LabelFillColor: ParsableManimColor = SVGNAMES.CORNSILK
-        FinalColor: ParsableManimColor = SVGNAMES.ROYALBLUE
+        LabelFillColor: ParsableManimColor = "#EAE2B7"
+        FinalColor: ParsableManimColor = "#392F5A"
         
 
         plane = NumberPlane(
@@ -77,21 +115,39 @@ class SixPointStar(Scene):
                 "stroke_color": GridColor,
                 "stroke_opacity": 0.25
             })
-        baseline = dashed(Line(np.array([-4, 0, 0]), np.array([+4, 0, 0]), color=ConstructionLineColor))
+        baseline = dashed(Line(np.array([-4, 0, 0]), np.array([+4, 0, 0]),
+                               color=ConstructionLineColor))
 
-        centralDot = Dot(color=ReferenceDotColor).move_to(np.array([0, 0, 0]))
-        centralCircle = Circle(radius=RADIUS, color=ConstructionLineColor).move_to(np.array([0, 0, 0]))
+        centralDot = (Dot(color=ReferenceDotColor)
+                      .move_to(np.array([0, 0, 0])))
+        centralCircle = (Circle(radius=RADIUS, color=ConstructionLineColor)
+                         .move_to(np.array([0, 0, 0])))
 
         dotA = Dot(color=ReferenceDotColor).move_to(np.array([-RADIUS, 0, 0]))
-        arcA = dashed(Arc(radius=RADIUS, start_angle=PI * 3 / 2, angle=PI, arc_center=np.array([-RADIUS, 0, 0]), color=ConstructionLineColor))
-        dotB = Dot(color=ReferenceDotColor).move_to(np.array([+RADIUS, 0, 0]))
-        arcB = dashed(Arc(radius=RADIUS, start_angle=PI * 1 / 2, angle=PI, arc_center=np.array([+RADIUS, 0, 0]), color=ConstructionLineColor))
+        arcA = dashed(Arc(radius=RADIUS, arc_center=np.array([-RADIUS, 0, 0]),
+                          start_angle=PI * 3 / 2, angle=PI,
+                          color=ConstructionLineColor))
+        dotB = (Dot(color=ReferenceDotColor)
+                .move_to(np.array([+RADIUS, 0, 0])))
+        arcB = dashed(Arc(radius=RADIUS,  arc_center=np.array([+RADIUS, 0, 0]),
+                          start_angle=PI * 1 / 2, angle=PI,
+                          color=ConstructionLineColor))
 
-        sixPoints: list[NDArray[np.float64]] = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES]) for n in range(0, 360, 60)]
+        sixPoints: list[NDArray[np.float64]] = [
+            spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES])
+            for n in range(0, 360, 60)
+        ]
         sixDots = VGroup(*[Dot(p, color=ReferenceDotColor) for p in sixPoints])
-        sixLabels = VGroup(*[LabeledDot(label=Text(str(i + 1), color=ReferenceDotColor, font_size=LabelSize), point=p, fill_color=LabelFillColor)
-                             for i, p in enumerate(spherical_to_cartesian([RADIUS + 0.5, n * DEGREES, 90 * DEGREES])
-                                                   for n in range(0, 360, 60))])
+        enumeratedLocations: list[tuple[int, NDArray[np.float64]]] = [
+            (i, p) for i, p in enumerate(
+                spherical_to_cartesian([RADIUS + 0.5, n * DEGREES, 90 * DEGREES])
+                for n in range(0, 360, 60))
+        ]
+        sixLabels = VGroup(*[
+            LabeledDot(label=Text(str(i + 1), color=ReferenceDotColor, font_size=LabelSize),
+                       point=p, fill_color=LabelFillColor)
+            for i, p in enumeratedLocations
+        ])
 
         triPoints = sixPoints[:]
         triPoints.append(sixPoints[0])
@@ -102,32 +158,42 @@ class SixPointStar(Scene):
         sixPointStarVertices: list[NDArray[np.float64]] = []
         for a, b in zip(sixPoints, interPoints):
             sixPointStarVertices.extend([a, b])
-        sixPointVertexDots = [Dot(p, radius=DEFAULT_DOT_RADIUS*0.75, color=FinalColor) for p in sixPointStarVertices]
+        sixPointVertexDots = [Dot(p, radius=DEFAULT_DOT_RADIUS*0.75, color=FinalColor)
+                              for p in sixPointStarVertices]
         sixPointStar = Polygon(*sixPointStarVertices, color=FinalColor, fill_opacity=1)
 
-        title = Text('Six-Point Star', color=FinalColor).next_to(sixPointStar, DOWN)
-        howto = Text('how to draw a', color=FinalColor, slant='ITALIC').next_to(sixPointStar, UP)
+
+        howto = (TexWrappedText('how to draw a', fontSize='large', color=FinalColor, italic=True, bold=False)
+                 .next_to(sixPointStar, UP)).shift(np.array((0.0, 0.5, 0.0)))
+        title = (TexWrappedText('Six-Point Rosette', fontSize='huge',
+                                color=FinalColor, italic=False, bold=True)
+                 .next_to(sixPointStar, DOWN)).shift(np.array((0.0, -0.5, 0.0)))
+
+        # **********************************************************************
+        # Animation
+
         self.add(title, howto, sixPointStar)
         self.wait(2)
 
-        self.play(FadeOut(title), FadeOut(howto), FadeOut(sixPointStar), FadeIn(plane))
+        self.play(FadeOut(title), FadeOut(howto),
+                  FadeOut(sixPointStar), FadeIn(plane))
         self.wait()
 
         # Step 1
-        # ins1 = createInstruction('Draw a straight line')
-        # self.play(FadeIn(ins1, shift=UP))
+        ins1 = createInstruction('Draw a straight line').next_to(plane, DOWN)
+        self.play(FadeIn(ins1, shift=UP))
         self.play(Create(baseline))
 
         # Step 2
-        # ins2 = createInstruction('Draw a circle on the line')
-        # self.play(Transform(ins1, ins2))
+        ins2 = createInstruction('Draw a circle on the line').next_to(plane, DOWN)
+        self.play(Transform(ins1, ins2))
         self.play(FadeIn(centralDot))
         self.play(Create(centralCircle))
         self.wait(1)
 
         # Step 3A
-        # ins3A = createInstruction('From the intersection of the line and circle, draw arcs cutting the circle.')
-        # self.play(Transform(ins1, ins3A), FadeIn(dotA), FadeIn(dotB))
+        ins3A = createInstruction('From the intersection of the line and circle, draw arcs cutting the circle.').next_to(plane, DOWN)
+        self.play(Transform(ins1, ins3A), FadeIn(dotA), FadeIn(dotB))
         self.play(FadeIn(dotA), FadeIn(dotB))
         self.play(Flash(dotA, color=ReferenceDotColor), Flash(dotB, color=ReferenceDotColor))
         self.play(Create(arcA), Create(arcB))
@@ -135,8 +201,8 @@ class SixPointStar(Scene):
 
         # Step 3B
 
-        # ins3B = createInstruction('this creates six points on the circle', continued=True)
-        # self.play(baseline.animate.fade(0.5), Transform(ins1, ins3B))
+        ins3B = createInstruction('this creates six points on the circle', continued=True).next_to(plane, DOWN)
+        self.play(baseline.animate.fade(0.5), Transform(ins1, ins3B))
         self.play(baseline.animate.fade(0.75), centralDot.animate.fade(0.75),
                   FadeIn(sixDots), FadeIn(sixLabels),
                   FadeOut(dotA), FadeOut(dotB))
@@ -144,53 +210,50 @@ class SixPointStar(Scene):
         self.wait(1)
 
         # Step 4
-        # ins4 = createInstruction('Join the alternate dots, creating two triangles')
-        # self.play(centralCircle.animate.fade(0.5), arcA.animate.fade(0.5), arcB.animate.fade(0.5),
-        # Transform(ins1, ins4))
+        ins4 = createInstruction('Join the alternate dots,\ncreating two triangles').next_to(plane, DOWN)
+        self.play(centralCircle.animate.fade(0.5), arcA.animate.fade(0.5), arcB.animate.fade(0.5),
+                  Transform(ins1, ins4))
         self.play(centralCircle.animate.fade(0.75), arcA.animate.fade(0.75), arcB.animate.fade(0.75))
         self.play(Create(tri1), run_time=2)
         self.play(Create(tri2), run_time=2)
         self.wait(1)
 
         # Step 5
-        # ins5 = createInstruction('Draw along the outline of the two triangles to create the 6-point star')
-        # self.play(tri1.animate.fade(0.5), tri2.animate.fade(0.5), FadeOut(sixLabels), Transform(ins1, ins5))
-        self.play(tri1.animate.fade(0.75), tri2.animate.fade(0.75),
-                  FadeOut(sixLabels), FadeOut(sixDots),
-                  *[FadeIn(d, scale=1.5) for d in sixPointVertexDots], run_time=1)
+        ins5 = createInstruction('Draw along the outline of the two triangles to create the 6-point rosette').next_to(plane, DOWN)
+        self.play(tri1.animate.fade(0.5), tri2.animate.fade(0.5), FadeOut(sixLabels), FadeOut(sixDots), Transform(ins1, ins5),
+                  *[FadeIn(d, scale=1.5) for d in sixPointVertexDots])
         sixPointStar.set_fill(FinalColor, opacity=0)
         self.play(Create(sixPointStar), run_time=5)
         self.play(*[FadeOut(d) for d in sixPointVertexDots],
                   FadeOut(arcA), FadeOut(arcB),
-                  FadeOut(tri1), FadeOut(tri2),
+                  FadeOut(tri1), FadeOut(tri2), FadeOut(ins1),
                   FadeOut(baseline), FadeOut(centralCircle), FadeOut(centralDot), FadeOut(plane),
                   FadeIn(title), sixPointStar.animate.set_fill(FinalColor, opacity=1), run_time=2)
 
-        # ins6 = createInstruction('Six-Point Rosette', continued=True)
-        # self.play(FadeOut(ins1), FadeIn(ins6, scale=1.5), run_time=2)
         self.wait(2)
-        self.play(FadeOut(title), FadeOut(sixPointStar))
+        # self.play(FadeOut(title), FadeOut(sixPointStar))
 
 
+# ==============================================================================
 class EightPointStar(Scene):
     def construct(self):
-        # **************************************************************************************************************
+        # **********************************************************************
         # Construction
         RADIUS = 2.0
 
         plane = NumberPlane(x_range=(-4, +4), y_range=(-4, +4)).set_opacity(0.25)
-        baseline = dashed(Line([-3, 0, 0], [+3, 0, 0], color=YELLOW), factor=0.8)
+        baseline = dashed(Line((-3, 0, 0), (+3, 0, 0), color=YELLOW), factor=0.8)
 
-        centralDot = Dot(color=RED).move_to([0, 0, 0])
-        centralCircle = Circle(radius=RADIUS, color=YELLOW).move_to([0, 0, 0])
+        centralDot = Dot(color=RED).move_to((0, 0, 0))
+        centralCircle = Circle(radius=RADIUS, color=YELLOW).move_to((0, 0, 0))
         dashedCentralCircle = dashed(centralCircle, factor=1.0)
 
-        pointA = [+RADIUS, 0, 0]
+        pointA = (+RADIUS, 0, 0)
         dotA = Dot(color=RED).move_to(pointA)
         arcA = dashed(Arc(radius=RADIUS, start_angle=(90 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
                           arc_center=pointA, color=YELLOW), factor=0.5)
 
-        pointB = [-RADIUS, 0, 0]
+        pointB = (-RADIUS, 0, 0)
         dotB = Dot(color=RED).move_to(pointB)
         arcB = dashed(Arc(radius=RADIUS, start_angle=(270 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
                           arc_center=pointB, color=YELLOW), factor=0.5)
@@ -253,7 +316,7 @@ class EightPointStar(Scene):
         eightPointVertexDots = [Dot(p, color=BLUE) for p in eightPointStarVertices]
         eightPointStar = Polygon(*eightPointStarVertices, color=BLUE, fill_opacity=1)
 
-        # **************************************************************************************************************
+        # **********************************************************************
         # Animation
         title = Text('Eight-Point Star', color=BLUE).next_to(eightPointStar, DOWN)
         howto = Text('how to draw an', color=BLUE, slant='ITALIC').next_to(eightPointStar, UP)
@@ -349,16 +412,16 @@ class EightPointStar(Scene):
         self.wait()
 
 
-# **************************************************************************************************************
+# ==============================================================================
 class EightPointStarConcept(Scene):
     def construct(self):
         RADIUS = 2.0
 
         plane = NumberPlane(x_range=(-4, +4), y_range=(-4, +4)).set_opacity(0.25)
-        baseline = dashed(Line([-3, 0, 0], [+3, 0, 0], color=YELLOW), factor=0.8)
+        baseline = dashed(Line((-3, 0, 0), (+3, 0, 0), color=YELLOW), factor=0.8)
 
-        centralDot = Dot(color=RED).move_to([0, 0, 0])
-        centralCircle = Circle(radius=RADIUS, color=YELLOW).move_to([0, 0, 0])
+        centralDot = Dot(color=RED).move_to((0, 0, 0))
+        centralCircle = Circle(radius=RADIUS, color=YELLOW).move_to((0, 0, 0))
         dashedCentralCircle = dashed(centralCircle, factor=1.0)
 
         eightPoints = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES]) for n in range(0, 360, 45)]
@@ -407,4 +470,4 @@ class EightPointStarConcept(Scene):
 
         self.wait(5)
 
-# **************************************************************************************************************
+# ==============================================================================
