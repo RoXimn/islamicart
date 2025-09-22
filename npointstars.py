@@ -8,9 +8,7 @@
 # ******************************************************************************
 from typing import Callable, Sequence
 
-import numpy as np
 from manim import *
-from manim.typing import Point3DLike
 from manim import SVGNAMES
 from numpy.typing import NDArray
 
@@ -19,13 +17,42 @@ config.frame_width = 9
 config.frame_height = 16
 config.frame_size = (1080, 1920)
 
+GridColor: ParsableManimColor = "#003049"
+ConstructionLineColor: ParsableManimColor = "#FF9911"
+ReferenceDotColor: ParsableManimColor = "#D62828"
+LabelSize: float = 24.0
+LabelFillColor: ParsableManimColor = "#EAE2B7"
+FinalColor: ParsableManimColor = "#392F5A"
+InstructionColor: ParsableManimColor = SVGNAMES.BROWN
+
 # ******************************************************************************
-def TexWrappedText(txt: str,
+def TexWrappedText(txt: str, *,
+                   parent: Mobject | None = None,
                    fontSize: str = "normalsize",
                    italic: bool = True,
                    bold: bool = False,
                    center: bool = True,
-                   color: ParsableManimColor = BLACK):
+                   color: ParsableManimColor = BLACK,
+                   width: int = 180) -> Tex:
+    """Create a wrapped text with specified font size, style and alignment.
+
+    Args:
+        txt (str): The text to be displayed.
+        parent (MObject, optional): The parent object below which the text is placed.
+        fontSize (str, optional): Font size. One of "tiny", "small", "normalsize",
+            "large", "Large", "LARGE", "huge", "Huge". Default is "normalsize".
+        italic (bool, optional): If True, the text will be in italics. Default
+            is True.
+        bold (bool, optional): If True, the text will be in bold. Default
+            is False.
+        center (bool, optional): If True, the text will be centered. Default
+            is True.
+        color (ParsableManimColor, optional): The color of the text. Default is BLACK.
+        width (int, optional): The width of the text box. Default is 200.
+
+    Returns:
+        Tex: A Tex MObject with the wrapped text and specified attributes.
+    """
     assert fontSize in ('tiny', 'small', 'normalsize', 'large', 'Large', 'LARGE', 'huge', 'Huge')
     texText = txt
     if bold:
@@ -35,35 +62,48 @@ def TexWrappedText(txt: str,
     if center:
         texText = r"\centering" + texText
     texText = fr"\{fontSize} {texText}"
-    return Tex(r"\parbox{5cm}{" f"{texText}" r"}",
-               tex_template=TexFontTemplates.palatino, color=color)
+    texText = Tex(r"\parbox{" f"{width}" "px}{" f"{texText}" "}",
+                  tex_template=TexFontTemplates.palatino, color=color)
+    if parent is not None:
+        texText.next_to(parent, DOWN)
+    return texText
 
 # ******************************************************************************
-def createInstruction(txt: str, continued: bool = False):
+def createInstruction(txt: str, continued: bool = False, parent: Mobject | None = None):
     if hasattr(createInstruction, "instructionCount"):
         n = createInstruction.instructionCount
     else:
         createInstruction.instructionCount = 0
 
     if continued:
-        instruction = TexWrappedText(txt, color=SVGNAMES.BROWN)
+        instruction = TexWrappedText(txt, color=InstructionColor, parent=parent)
     else:
         createInstruction.instructionCount += 1
         instruction = TexWrappedText(
             f"{createInstruction.instructionCount}. {txt}",
-            color=SVGNAMES.BROWN
+            color=InstructionColor,
+            parent=parent
         )
     return instruction
 
 # ******************************************************************************
 def XY(point: NDArray[np.float64]) -> NDArray[np.float64]:
-    """Get X, Y coordinates of the point discarding the Z coordinate"""
+    """Get X, Y coordinates of the point, discarding the Z coordinate"""
     return np.array([point[0], point[1], 0])
 
 # ******************************************************************************
 def intersections(points: Sequence[NDArray[np.float64]],
                   interval: int, sides: int) -> list[NDArray[np.float64]]:
-    """Get intersections of the lines joining the list of points on a circle at given interval"""
+    """Get intersections of the lines joining the list of points on a circle at given interval
+
+    Args:
+        points (Sequence[NDArray[np.float64]]): A sequence of points that lie on a circle.
+        interval (int): The interval between the points to be joined.
+        sides (int): The number of sides of the polygon formed by joining every `interval`-th point.
+
+    Returns:
+        list[NDArray[np.float64]]: A list of intersection points of the lines joining every `interval`-th pair of points.
+    """
     CAP: Callable[[int], int] = lambda x: x % len(points)
     pp: list[NDArray[np.float64]] = []
     for i in range(sides):
@@ -76,38 +116,35 @@ def intersections(points: Sequence[NDArray[np.float64]],
     return pp
 
 # ******************************************************************************
-def dashed(mobject: VMobject, factor: float=1.0):
+def dashed(mobject: VMobject, factor: float=1.0) -> DashedVMobject:
+    """Return a dashed version of the given VMobject.
+
+    Args:
+        mobject (VMobject): The Mobject to be dashed.
+        factor (float, optional): A scaling factor for the number of dashes. Default is 1.0.
+
+    Returns:
+        DashedVMobject: A new Mobject that is a dashed version of the input.
+    """
     return DashedVMobject(mobject, num_dashes=int(64 * factor), dashed_ratio=0.6)
 
 # ==============================================================================
 class SixPointStar(Scene):
-    def createCircle(self, center: Point3DLike | Mobject,
-                     radius: float, color: ParsableManimColor=WHITE,
-                     dotColor: ParsableManimColor=RED):
-        dot = Dot(color=dotColor).move_to(center)
-        circle = Circle(radius=radius, color=color).move_to(center)
-
-        self.add(dot)
-        return circle
-
     def construct(self):
         # **********************************************************************
-        # Construction
+        # Configuration
+        # **********************************************************************
+        RADIUS: float = 3.0
+
 
         background = ImageMobject("assets/paper-texture-02.jpg")
         background.scale_to_fit_height(self.camera.frame_height)
         background.set_z_index(-100)
         self.add(background)
 
-        RADIUS: float = 3.0
-        GridColor: ParsableManimColor = "#003049"
-        ConstructionLineColor: ParsableManimColor = "#FF9911"
-        ReferenceDotColor: ParsableManimColor = "#D62828"
-        LabelSize: float = 24.0
-        LabelFillColor: ParsableManimColor = "#EAE2B7"
-        FinalColor: ParsableManimColor = "#392F5A"
-        
-
+        # **********************************************************************
+        # Construction
+        # **********************************************************************
         plane = NumberPlane(
             x_range=(-4, +4), y_range=(-4, +4),
             axis_config={'stroke_color': GridColor},
@@ -115,8 +152,8 @@ class SixPointStar(Scene):
                 "stroke_color": GridColor,
                 "stroke_opacity": 0.25
             })
-        baseline = dashed(Line(np.array([-4, 0, 0]), np.array([+4, 0, 0]),
-                               color=ConstructionLineColor))
+        baseline = Line(np.array([-4, 0, 0]), np.array([+4, 0, 0]),
+                        color=ConstructionLineColor)
 
         centralDot = (Dot(color=ReferenceDotColor)
                       .move_to(np.array([0, 0, 0])))
@@ -162,37 +199,36 @@ class SixPointStar(Scene):
                               for p in sixPointStarVertices]
         sixPointStar = Polygon(*sixPointStarVertices, color=FinalColor, fill_opacity=1)
 
-
-        howto = (TexWrappedText('how to draw a', fontSize='large', color=FinalColor, italic=True, bold=False)
+        howto = (TexWrappedText('how to draw a', fontSize='Large', color=FinalColor, italic=True, bold=False)
                  .next_to(sixPointStar, UP)).shift(np.array((0.0, 0.5, 0.0)))
-        title = (TexWrappedText('Six-Point Rosette', fontSize='huge',
+        title = (TexWrappedText('Six-Point Star', fontSize='huge',
                                 color=FinalColor, italic=False, bold=True)
                  .next_to(sixPointStar, DOWN)).shift(np.array((0.0, -0.5, 0.0)))
 
         # **********************************************************************
         # Animation
-
+        # **********************************************************************
         self.add(title, howto, sixPointStar)
         self.wait(2)
 
         self.play(FadeOut(title), FadeOut(howto),
                   FadeOut(sixPointStar), FadeIn(plane))
-        self.wait()
+        self.wait(1)
 
         # Step 1
-        ins1 = createInstruction('Draw a straight line').next_to(plane, DOWN)
+        ins1 = createInstruction('Draw a straight line', parent=plane)
         self.play(FadeIn(ins1, shift=UP))
         self.play(Create(baseline))
 
         # Step 2
-        ins2 = createInstruction('Draw a circle on the line').next_to(plane, DOWN)
+        ins2 = createInstruction('Draw a circle on the line', parent=plane)
         self.play(Transform(ins1, ins2))
         self.play(FadeIn(centralDot))
         self.play(Create(centralCircle))
         self.wait(1)
 
         # Step 3A
-        ins3A = createInstruction('From the intersection of the line and circle, draw arcs cutting the circle.').next_to(plane, DOWN)
+        ins3A = createInstruction('From the intersection of the line and circle, draw arcs cutting the circle.', parent=plane)
         self.play(Transform(ins1, ins3A), FadeIn(dotA), FadeIn(dotB))
         self.play(FadeIn(dotA), FadeIn(dotB))
         self.play(Flash(dotA, color=ReferenceDotColor), Flash(dotB, color=ReferenceDotColor))
@@ -201,7 +237,7 @@ class SixPointStar(Scene):
 
         # Step 3B
 
-        ins3B = createInstruction('this creates six points on the circle', continued=True).next_to(plane, DOWN)
+        ins3B = createInstruction('this creates six points on the circle', continued=True, parent=plane)
         self.play(baseline.animate.fade(0.5), Transform(ins1, ins3B))
         self.play(baseline.animate.fade(0.75), centralDot.animate.fade(0.75),
                   FadeIn(sixDots), FadeIn(sixLabels),
@@ -210,7 +246,7 @@ class SixPointStar(Scene):
         self.wait(1)
 
         # Step 4
-        ins4 = createInstruction('Join the alternate dots,\ncreating two triangles').next_to(plane, DOWN)
+        ins4 = createInstruction('Join the alternate dots,\ncreating two triangles', parent=plane)
         self.play(centralCircle.animate.fade(0.5), arcA.animate.fade(0.5), arcB.animate.fade(0.5),
                   Transform(ins1, ins4))
         self.play(centralCircle.animate.fade(0.75), arcA.animate.fade(0.75), arcB.animate.fade(0.75))
@@ -219,7 +255,7 @@ class SixPointStar(Scene):
         self.wait(1)
 
         # Step 5
-        ins5 = createInstruction('Draw along the outline of the two triangles to create the 6-point rosette').next_to(plane, DOWN)
+        ins5 = createInstruction('Draw along the outline of the two triangles to create the 6-point star', parent=plane)
         self.play(tri1.animate.fade(0.5), tri2.animate.fade(0.5), FadeOut(sixLabels), FadeOut(sixDots), Transform(ins1, ins5),
                   *[FadeIn(d, scale=1.5) for d in sixPointVertexDots])
         sixPointStar.set_fill(FinalColor, opacity=0)
@@ -231,7 +267,6 @@ class SixPointStar(Scene):
                   FadeIn(title), sixPointStar.animate.set_fill(FinalColor, opacity=1), run_time=2)
 
         self.wait(2)
-        # self.play(FadeOut(title), FadeOut(sixPointStar))
 
 
 # ==============================================================================

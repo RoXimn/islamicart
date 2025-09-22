@@ -235,3 +235,14 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 media/
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.wmv
+*.flv
+*.mpeg
+*.m4v
+*.webm
+*.mp3
+
