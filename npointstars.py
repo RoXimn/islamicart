@@ -20,6 +20,7 @@ config.frame_size = (1080, 1920)
 GridColor: ParsableManimColor = "#003049"
 ConstructionLineColor: ParsableManimColor = "#FF9911"
 ReferenceDotColor: ParsableManimColor = "#D62828"
+IndicateDotColor: ParsableManimColor = "#9DD9D2"
 LabelSize: float = 24.0
 LabelFillColor: ParsableManimColor = "#EAE2B7"
 FinalColor: ParsableManimColor = "#392F5A"
@@ -33,7 +34,7 @@ def TexWrappedText(txt: str, *,
                    bold: bool = False,
                    center: bool = True,
                    color: ParsableManimColor = BLACK,
-                   width: int = 180) -> Tex:
+                   width: int = 170) -> Tex:
     """Create a wrapped text with specified font size, style and alignment.
 
     Args:
@@ -48,7 +49,7 @@ def TexWrappedText(txt: str, *,
         center (bool, optional): If True, the text will be centered. Default
             is True.
         color (ParsableManimColor, optional): The color of the text. Default is BLACK.
-        width (int, optional): The width of the text box. Default is 200.
+        width (int, optional): The width of the text box. Default is 180.
 
     Returns:
         Tex: A Tex MObject with the wrapped text and specified attributes.
@@ -121,7 +122,9 @@ def dashed(mobject: VMobject, factor: float=1.0) -> DashedVMobject:
 
     Args:
         mobject (VMobject): The Mobject to be dashed.
-        factor (float, optional): A scaling factor for the number of dashes. Default is 1.0.
+        factor (float, optional): A scaling factor for the number of dashes,
+            for base value of 64 dashes and a ratio of 0.6 for
+            the dash length to space length. Default is 1.0.
 
     Returns:
         DashedVMobject: A new Mobject that is a dashed version of the input.
@@ -135,7 +138,6 @@ class SixPointStar(Scene):
         # Configuration
         # **********************************************************************
         RADIUS: float = 3.0
-
 
         background = ImageMobject("assets/paper-texture-02.jpg")
         background.scale_to_fit_height(self.camera.frame_height)
@@ -273,57 +275,91 @@ class SixPointStar(Scene):
 class EightPointStar(Scene):
     def construct(self):
         # **********************************************************************
+        # Configuration
+        # **********************************************************************
+        RADIUS: float = 2.0
+
+        background = ImageMobject("assets/paper-texture-02.jpg")
+        background.scale_to_fit_height(self.camera.frame_height)
+        background.set_z_index(-100)
+        self.add(background)
+
+        # **********************************************************************
         # Construction
-        RADIUS = 2.0
+        # **********************************************************************
+        plane = NumberPlane(
+            x_range=(-4, +4), y_range=(-4, +4),
+            axis_config={'stroke_color': GridColor},
+            background_line_style={
+                "stroke_color": GridColor,
+                "stroke_opacity": 0.25
+            })
+        baseline = Line(np.array([-4, 0, 0]), np.array([+4, 0, 0]),
+                        color=ConstructionLineColor)
 
-        plane = NumberPlane(x_range=(-4, +4), y_range=(-4, +4)).set_opacity(0.25)
-        baseline = dashed(Line((-3, 0, 0), (+3, 0, 0), color=YELLOW), factor=0.8)
-
-        centralDot = Dot(color=RED).move_to((0, 0, 0))
-        centralCircle = Circle(radius=RADIUS, color=YELLOW).move_to((0, 0, 0))
+        centralDot = (Dot(color=ReferenceDotColor)
+                      .move_to(np.array([0, 0, 0])))
+        centralCircle = (Circle(radius=RADIUS, color=ConstructionLineColor)
+                         .move_to(np.array([0, 0, 0])))
         dashedCentralCircle = dashed(centralCircle, factor=1.0)
 
         pointA = (+RADIUS, 0, 0)
-        dotA = Dot(color=RED).move_to(pointA)
-        arcA = dashed(Arc(radius=RADIUS, start_angle=(90 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
-                          arc_center=pointA, color=YELLOW), factor=0.5)
+        dotA = Dot(color=ReferenceDotColor).move_to(pointA)
+        arcA = dashed(Arc(radius=RADIUS, arc_center=pointA,
+                          start_angle=(90 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
+                          color=ConstructionLineColor), factor=0.5)
 
         pointB = (-RADIUS, 0, 0)
-        dotB = Dot(color=RED).move_to(pointB)
-        arcB = dashed(Arc(radius=RADIUS, start_angle=(270 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
-                          arc_center=pointB, color=YELLOW), factor=0.5)
+        dotB = Dot(color=ReferenceDotColor).move_to(pointB)
+        arcB = dashed(Arc(radius=RADIUS, arc_center=pointB,
+                          start_angle=(270 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
+                          color=ConstructionLineColor), factor=0.5)
 
-        fourPoints = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES]) for n in [60, 120, 240, 300]]
-        fourDots = VGroup(*[Dot(p, color=RED) for p in fourPoints])
-        fourLabels = VGroup(*[LabeledDot(label=Text('abcd'[i], color=RED, font_size=16), point=p, fill_color=WHITE)
-                              for i, p in enumerate(spherical_to_cartesian([RADIUS + 0.5, n * DEGREES, 90 * DEGREES])
-                                                    for n in [60, 120, 240, 300])])
+        fourPoints = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES])
+                      for n in [60, 120, 240, 300]]
+        fourDots = VGroup(*[Dot(p, color=ReferenceDotColor) for p in fourPoints])
+        enumeratedLocations: list[tuple[int, NDArray[np.float64]]] = [
+            (i, p) for i, p in enumerate(
+                spherical_to_cartesian([RADIUS + 0.5, n * DEGREES, 90 * DEGREES])
+                for n in [60, 120, 240, 300])
+        ]
+        fourLabels = VGroup(*[
+            LabeledDot(label=Text('abcd'[i], color=RED, font_size=16),
+                       point=p, fill_color=LabelFillColor)
+            for i, p in enumeratedLocations
+        ])
 
-        upperArcR = dashed(Arc(radius=RADIUS, start_angle=(120 - 5) * DEGREES, angle=10*DEGREES,
-                               arc_center=fourPoints[0], color=YELLOW), factor=0.1)
-        upperArcL = dashed(Arc(radius=RADIUS, start_angle=(60 - 5) * DEGREES, angle=10*DEGREES,
-                               arc_center=fourPoints[1], color=YELLOW), factor=0.1)
-        lowerArcL = dashed(Arc(radius=RADIUS, start_angle=(300 - 5) * DEGREES, angle=10*DEGREES,
-                               arc_center=fourPoints[2], color=YELLOW), factor=0.1)
-        lowerArcR = dashed(Arc(radius=RADIUS, start_angle=(240 - 5) * DEGREES, angle=10*DEGREES,
-                               arc_center=fourPoints[3], color=YELLOW), factor=0.1)
+        upperArcR = dashed(Arc(radius=RADIUS, arc_center=fourPoints[0],
+                               start_angle=(120 - 5) * DEGREES, angle=10*DEGREES,
+                               color=ConstructionLineColor), factor=0.1)
+        upperArcL = dashed(Arc(radius=RADIUS, arc_center=fourPoints[1],
+                               start_angle=(60 - 5) * DEGREES, angle=10*DEGREES,
+                               color=ConstructionLineColor), factor=0.1)
+        lowerArcL = dashed(Arc(radius=RADIUS, arc_center=fourPoints[2],
+                               start_angle=(300 - 5) * DEGREES, angle=10*DEGREES,
+                               color=ConstructionLineColor), factor=0.1)
+        lowerArcR = dashed(Arc(radius=RADIUS, arc_center=fourPoints[3],
+                               start_angle=(240 - 5) * DEGREES, angle=10*DEGREES,
+                               color=ConstructionLineColor), factor=0.1)
         for a in (upperArcR, upperArcL, lowerArcL, lowerArcR):
             a.z_index = 10
 
         pointC = pointA + spherical_to_cartesian([RADIUS * 2, 120 * DEGREES, 90 * DEGREES])
         pointD = pointA + spherical_to_cartesian([RADIUS * 2, 240 * DEGREES, 90 * DEGREES])
-        dotC = Dot(color=RED).move_to(pointC)
-        dotD = Dot(color=RED).move_to(pointD)
-        perpendicularLine = dashed(Line(pointC, pointD, color=YELLOW), factor=0.8)
+        dotC = Dot(color=ReferenceDotColor).move_to(pointC)
+        dotD = Dot(color=ReferenceDotColor).move_to(pointD)
+        perpendicularLine = dashed(Line(pointC, pointD, color=ConstructionLineColor), factor=0.8)
 
         pointE = centralCircle.point_at_angle(90 * DEGREES)
         pointF = centralCircle.point_at_angle(270 * DEGREES)
-        dotE = Dot(color=RED).move_to(pointE)
-        dotF = Dot(color=RED).move_to(pointF)
-        arcE = dashed(Arc(radius=RADIUS, start_angle=(180 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
-                          arc_center=pointE, color=YELLOW), factor=0.5)
-        arcF = dashed(Arc(radius=RADIUS, start_angle=(0 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
-                          arc_center=pointF, color=YELLOW), factor=0.5)
+        dotE = Dot(color=ReferenceDotColor).move_to(pointE)
+        dotF = Dot(color=ReferenceDotColor).move_to(pointF)
+        arcE = dashed(Arc(radius=RADIUS, arc_center=pointE,
+                          start_angle=(180 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
+                          color=ConstructionLineColor), factor=0.5)
+        arcF = dashed(Arc(radius=RADIUS, arc_center=pointF,
+                          start_angle=(0 - 5) * DEGREES, angle=(180 + 10) * DEGREES,
+                          color=ConstructionLineColor), factor=0.5)
 
         cornerPoints = []
         for p in [pointA, pointB]:
@@ -331,120 +367,149 @@ class EightPointStar(Scene):
             for a in [90, 270]:
                 cornerPoints.append(c.point_at_angle(a * DEGREES))
         cornerPoints.append(cornerPoints.pop(1))
-        cornerDots = VGroup(*[Dot(p, color=RED) for p in cornerPoints])
-        crossLineA = dashed(Line(cornerPoints[0], cornerPoints[2], color=YELLOW), factor=0.8)
-        crossLineB = dashed(Line(cornerPoints[1], cornerPoints[3], color=YELLOW), factor=0.8)
+        cornerDots = VGroup(*[Dot(p, color=ReferenceDotColor) for p in cornerPoints])
+        crossLineA = dashed(Line(cornerPoints[0], cornerPoints[2], color=ConstructionLineColor), factor=0.8)
+        crossLineB = dashed(Line(cornerPoints[1], cornerPoints[3], color=ConstructionLineColor), factor=0.8)
 
         eightPoints = [spherical_to_cartesian([RADIUS, n * DEGREES, 90 * DEGREES]) for n in range(0, 360, 45)]
-        eightDots = [Dot(p, color=RED) for p in eightPoints]
+        eightDots = [Dot(p, color=ReferenceDotColor) for p in eightPoints]
 
         squarePoints = eightPoints[:]
         squarePoints.append(eightPoints[0])
 
-        sq1 = dashed(Polygon(*squarePoints[0::2], color=YELLOW), factor=0.8)
-        sq2 = dashed(Polygon(*squarePoints[1::2], color=YELLOW), factor=0.8)
+        sq1 = dashed(Polygon(*squarePoints[0::2], color=ConstructionLineColor), factor=0.8)
+        sq2 = dashed(Polygon(*squarePoints[1::2], color=ConstructionLineColor), factor=0.8)
 
         interPoints = intersections(eightPoints, interval=2, sides=8)
         eightPointStarVertices = []
         for a, b in zip(eightPoints, interPoints):
             eightPointStarVertices.extend([a, b])
-        eightPointVertexDots = [Dot(p, color=BLUE) for p in eightPointStarVertices]
-        eightPointStar = Polygon(*eightPointStarVertices, color=BLUE, fill_opacity=1)
+        eightPointVertexDots = [Dot(p, radius=DEFAULT_DOT_RADIUS*0.75, color=FinalColor)
+                                for p in eightPointStarVertices]
+        eightPointStar = Polygon(*eightPointStarVertices, color=FinalColor, fill_opacity=1)
+
+        howto = (TexWrappedText('how to draw a', fontSize='Large', color=FinalColor, italic=True, bold=False)
+                 .next_to(eightPointStar, UP)).shift(np.array((0.0, 0.5, 0.0)))
+        title = (TexWrappedText('Eight-Point Star', fontSize='huge',
+                                color=FinalColor, italic=False, bold=True)
+                 .next_to(eightPointStar, DOWN)).shift(np.array((0.0, -0.5, 0.0)))
 
         # **********************************************************************
         # Animation
-        title = Text('Eight-Point Star', color=BLUE).next_to(eightPointStar, DOWN)
-        howto = Text('how to draw an', color=BLUE, slant='ITALIC').next_to(eightPointStar, UP)
         self.add(title, howto, eightPointStar)
-        # self.wait(2)
+        self.wait(2)
 
-        self.play(FadeOut(title), FadeOut(howto), FadeOut(eightPointStar), FadeIn(plane))
-        # self.wait()
+        self.play(FadeOut(title), FadeOut(howto), FadeOut(eightPointStar),
+                  FadeIn(plane))
+        self.wait(1)
 
         # Step 1
+        ins1 = createInstruction('Draw a straight line', parent=plane)
+        self.play(FadeIn(ins1, shift=UP))
         self.play(Create(baseline))
 
         # Step 2
-        self.play(Indicate(centralDot, color=BLUE, scale_factor=1.5))
+        ins2 = createInstruction('Draw a circle on the line', parent=plane)
+        self.play(Transform(ins1, ins2))
+        self.play(Indicate(centralDot, color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(dashedCentralCircle))
-        # self.wait(1)
+        self.wait(1)
 
         # Step 3
-        self.play(Indicate(dotA, color=BLUE, scale_factor=1.5))
+        ins3 = createInstruction('From the intersection of the line and circle, draw arcs cutting the circle.', parent=plane)
+        self.play(Transform(ins1, ins3), FadeIn(dotA), FadeIn(dotB))
+        self.play(Indicate(dotA, color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(arcA))
-        self.play(Indicate(dotB, color=BLUE, scale_factor=1.5))
+        self.play(Indicate(dotB, color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(arcB))
-        # self.wait(1)
+        self.wait(1)
 
         # Step 4
-        self.play(baseline.animate.fade(0.75), centralDot.animate.fade(0.75))
-        self.play(Indicate(fourDots[0], color=BLUE, scale_factor=1.5))
+        ins4 = createInstruction('Draw perpendicular to the baseline.', parent=plane)
+        self.play(Transform(ins1, ins4), baseline.animate.fade(0.75), centralDot.animate.fade(0.75))
+        self.play(Indicate(fourDots[0], color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(upperArcR), run_time=0.3)
-        self.play(Indicate(fourDots[1], color=BLUE, scale_factor=1.5))
+        self.play(Indicate(fourDots[1], color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(upperArcL), run_time=0.3)
-        # self.wait(0.5)
-        self.play(Indicate(fourDots[2], color=BLUE, scale_factor=1.5))
+        self.wait(0.5)
+        self.play(Indicate(fourDots[2], color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(lowerArcL), run_time=0.3)
-        self.play(Indicate(fourDots[3], color=BLUE, scale_factor=1.5))
+        self.play(Indicate(fourDots[3], color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(lowerArcR), run_time=0.3)
-        # self.wait(0.5)
+        self.play(fourDots.animate.fade(0.75))
+        self.play(Indicate(dotC, color=IndicateDotColor, scale_factor=1.5),
+                  Indicate(dotD, color=IndicateDotColor, scale_factor=1.5))
+        self.play(Create(perpendicularLine))
+        self.wait(1)
 
         # Step 5
-        self.play(fourDots.animate.fade(0.75))
-        self.play(Indicate(dotC, color=BLUE, scale_factor=1.5),
-                  Indicate(dotD, color=BLUE, scale_factor=1.5))
-        self.play(Create(perpendicularLine))
-        # self.wait(1)
-
-        # Step 6
+        ins5 = createInstruction('From the intersection of the perpendicular line '
+                                 'and the circle, draw arcs cutting the previous two arcs.',
+                                 parent=plane)
         self.remove(fourDots)
-        self.play(FadeIn(dotE), FadeIn(dotF),
+        self.play(Transform(ins1, ins5), FadeIn(dotE), FadeIn(dotF),
                   *[arc.animate.fade(0.75) for arc in (upperArcR, upperArcL, lowerArcL, lowerArcR)],
                   FadeOut(dotC), FadeOut(dotD))
-        self.play(Indicate(dotE, color=BLUE, scale_factor=1.5))
+        self.play(Indicate(dotE, color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(arcE))
-        self.play(Indicate(dotF, color=BLUE, scale_factor=1.5))
+        self.play(Indicate(dotF, color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(arcF))
-        self.wait(0.5)
+        self.wait(1)
 
-        # Step 7
-        self.play(perpendicularLine.animate.fade(0.75),
+        # Step 6
+        ins6 = createInstruction('Draw diagonal lines intersecting the circle.',
+                                 parent=plane)
+        self.play(Transform(ins1, ins6), perpendicularLine.animate.fade(0.75),
                   FadeIn(cornerDots),
                   *[arc.animate.fade(0.75) for arc in (arcA, arcB, arcE, arcF)])
-        self.play(Indicate(cornerDots[0], color=BLUE, scale_factor=1.5),
-                  Indicate(cornerDots[2], color=BLUE, scale_factor=1.5))
+        self.play(Indicate(cornerDots[0], color=IndicateDotColor, scale_factor=1.5),
+                  Indicate(cornerDots[2], color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(crossLineA))
-        self.play(Indicate(cornerDots[1], color=BLUE, scale_factor=1.5),
-                  Indicate(cornerDots[3], color=BLUE, scale_factor=1.5))
+        self.play(Indicate(cornerDots[1], color=IndicateDotColor, scale_factor=1.5),
+                  Indicate(cornerDots[3], color=IndicateDotColor, scale_factor=1.5))
         self.play(Create(crossLineB))
-        # self.wait()
+        self.wait(1)
 
-        # Step 8
-        self.play(FadeOut(cornerDots),
+        # Step 7
+        ins7 = createInstruction('Draw diagonal lines intersecting the circle.',
+                                 parent=plane)
+        self.play(Transform(ins1, ins7), FadeOut(cornerDots),
                   *[line.animate.fade(0.75) for line in (crossLineA, crossLineB)],
                   *[FadeIn(d) for d in eightDots])
         self.remove(dotA, dotB, dotE, dotF)
 
-        self.play(*[Indicate(d, color=BLUE, scale_factor=1.5) for d in eightDots[0::2]])
+        # Step 8
+        ins8 = createInstruction('This creates eight equally spaced points '
+                                 'on the circle. Join alternate points to '
+                                 'create two overlapping squares.',
+                                 parent=plane)
+        self.play(Transform(ins1, ins8), dashedCentralCircle.animate.fade(0.5))
+        self.play(*[Indicate(d, color=IndicateDotColor, scale_factor=1.5)
+                    for d in eightDots[0::2]])
         self.play(Create(sq1))
 
-        self.play(*[Indicate(d, color=BLUE, scale_factor=1.5) for d in eightDots[1::2]])
+        self.play(*[Indicate(d, color=IndicateDotColor, scale_factor=1.5)
+                    for d in eightDots[1::2]])
         self.play(Create(sq2))
 
         # Step 9
+        ins9 = createInstruction('Draw along the outline of the two squares '
+                                 'to create the 8-point star',
+                                 parent=plane)
+        self.play(Transform(ins1, ins9))
         self.play(*[o.animate.fade(0.75) for o in eightDots],
-                  *[o.animate.fade(0.50) for o in (sq1, sq2)],
-                  *[FadeIn(d) for d in eightPointVertexDots])
-        eightPointStar.set_fill(BLUE, opacity=0)
+          *[o.animate.fade(0.50) for o in (sq1, sq2)],
+          *[FadeIn(d) for d in eightPointVertexDots])
+        eightPointStar.set_fill(FinalColor, opacity=0)
         self.play(Create(eightPointStar), run_time=3)
-        self.play(FadeOut(sq1), FadeOut(sq2),
+        self.play(FadeOut(sq1), FadeOut(sq2), FadeOut(ins1),
                   *[FadeOut(d) for d in (*eightPointVertexDots, sq1, sq2, *eightDots)],
                   *[FadeOut(d) for d in (arcA, arcB, arcE, arcF, crossLineA, crossLineB)],
                   *[FadeOut(d) for d in (perpendicularLine, upperArcR, upperArcL, lowerArcL, lowerArcR)],
                   *[FadeOut(d) for d in (baseline, centralDot, dashedCentralCircle, plane)],
                   FadeIn(title),
-                  eightPointStar.animate.set_fill(BLUE, opacity=1), run_time=2)
-        self.wait()
+                  eightPointStar.animate.set_fill(FinalColor, opacity=1), run_time=2)
+        self.wait(1)
 
 
 # ==============================================================================
